@@ -7,18 +7,18 @@ Console.WriteLine("Logs from your program will appear here!");
 TcpListener server = new TcpListener(IPAddress.Any, 6379);
 server.Start();
 
-var socket = server.AcceptSocket(); // wait for client
-
-Thread thread = new Thread(() => HandleClient(socket));
-thread.Start();
+while (true)
+{
+    var socket = server.AcceptSocket(); // wait for client
+    Thread thread = new Thread(() => HandleClient(socket));
+    thread.Start();
+}
 
 static void HandleClient(Socket socket)
 {
-    byte[] bytes = new Byte[1024];
-
-
     while (true)
     {
+        byte[] bytes = new Byte[1024];
         var numByte = socket.Receive(bytes);
 
         var data = Encoding.ASCII.GetString(bytes,
@@ -26,8 +26,8 @@ static void HandleClient(Socket socket)
 
         var buffer = Encoding.UTF8.GetBytes("+PONG\r\n");
         socket.Send(buffer);
-
     }
+    
 }
 
 
