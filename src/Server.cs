@@ -1,5 +1,3 @@
-using System;
-using System.IO;
 using System.Net;
 using System.Net.Sockets;
 using System.Text;
@@ -11,19 +9,25 @@ server.Start();
 
 var socket = server.AcceptSocket(); // wait for client
 
-byte[] bytes = new Byte[1024];
+Thread thread = new Thread(() => HandleClient(socket));
+thread.Start();
 
-
-while (true)
+static void HandleClient(Socket socket)
 {
-    var numByte = socket.Receive(bytes);
+    byte[] bytes = new Byte[1024];
 
-    var data = Encoding.ASCII.GetString(bytes,
-                               0, numByte);
 
-    var buffer = Encoding.UTF8.GetBytes("+PONG\r\n");
-    socket.Send(buffer);
-    
+    while (true)
+    {
+        var numByte = socket.Receive(bytes);
+
+        var data = Encoding.ASCII.GetString(bytes,
+                                   0, numByte);
+
+        var buffer = Encoding.UTF8.GetBytes("+PONG\r\n");
+        socket.Send(buffer);
+
+    }
 }
 
 
