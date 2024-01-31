@@ -1,3 +1,4 @@
+using System;
 using System.IO;
 using System.Net;
 using System.Net.Sockets;
@@ -11,17 +12,19 @@ server.Start();
 var socket = server.AcceptSocket(); // wait for client
 
 byte[] bytes = new Byte[1024];
-string data;
+
 
 while (true)
 {
-    int numByte = socket.Receive(bytes);
+    var numByte = socket.Receive(bytes);
 
-    data = Encoding.ASCII.GetString(bytes,
+    var data = Encoding.ASCII.GetString(bytes,
                                0, numByte);
-    if(data == "ping")
-    {
-        var buffer = Encoding.UTF8.GetBytes("+PONG\r\n");
-        socket.Send(buffer);
-    }
+
+    var buffer = Encoding.UTF8.GetBytes("+PONG\r\n");
+    socket.Send(buffer);
+    
 }
+
+
+
