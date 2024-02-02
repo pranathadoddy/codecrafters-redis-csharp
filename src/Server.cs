@@ -4,7 +4,7 @@ using System.Text;
 
 Console.WriteLine("Logs from your program will appear here!");
 
-Dictionary<string, string> dataStore = new Dictionary<string, string>();
+Dictionary<string, Tuple<string, DateTime>> dataStore = new Dictionary<string, Tuple<string, DateTime>>();
 
 TcpListener server = new TcpListener(IPAddress.Any, 6379);
 server.Start();
@@ -55,11 +55,14 @@ void HandleCommand(Socket socket, string command, List<object> args)
             break;
 
         case "SET":
-            if(args.Count >= 2)
+            if(args.Count >= 4)
             {
                 var key = args[0].ToString() ?? "";
                 var value = args[1].ToString() ?? "";
-                var response = dataStore.TryAdd(key, value) ? "+OK" : "$-1";
+
+                var expiryTime = args[2].ToString() == "PX" ? DateTime.Now.AddMilliseconds((double)args[3]) : DateTime.MaxValue;
+
+                var response = dataStore.TryAdd(key, new Tuple<string, DateTime>(value, expiryTime)) ? "+OK" : "$-1";
                 socket.Send(Encoding.UTF8.GetBytes($"{response}\r\n"));
             }
             else
@@ -72,10 +75,17 @@ void HandleCommand(Socket socket, string command, List<object> args)
             if(args.Count == 1)
             {
                 var key = args[0].ToString() ?? "";
-                string value;
-                if (dataStore.TryGetValue(key, out value))
+                Tuple<string, DateTime> valuePair;
+                if (dataStore.TryGetValue(key, out valuePair))
                 {
-                    socket.Send(Encoding.UTF8.GetBytes($"+{value}\r\n"));
+                    if(valuePair.Item2 < valuePair.Item2)
+                    {
+                        socket.Send(Encoding.UTF8.GetBytes($"+{valuePair.Item1}\r\n"));
+                    }
+                    else
+                    {
+                        socket.Send(Encoding.UTF8.GetBytes($"$-1\r\n"));
+                    }
                 }
                 else
                 {
