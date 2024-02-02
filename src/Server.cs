@@ -60,13 +60,17 @@ void HandleCommand(Socket socket, string command, List<object> args)
             {
                 var key = args[0].ToString() ?? "";
                 var value = args[1].ToString() ?? "";
+
+                dataStore.Remove(key);
                 
-                response = dataStore.TryAdd(key, new Tuple<string, DateTime>(value, DateTime.Now.AddMilliseconds((double)args[3]))) ? "+OK" : "$-1";
+                response = dataStore.TryAdd(key, new Tuple<string, DateTime>(value, DateTime.Now.AddMilliseconds(Double.Parse(args[3].ToString() ?? "0" )))) ? "+OK" : "$-1";
             }
             else
             {
                 var key = args[0].ToString() ?? "";
                 var value = args[1].ToString() ?? "";
+
+                dataStore.Remove(key);
 
                 response = dataStore.TryAdd(key, new Tuple<string, DateTime>(value, DateTime.MaxValue)) ? "+OK" : "$-1";
                 
@@ -81,7 +85,7 @@ void HandleCommand(Socket socket, string command, List<object> args)
                 Tuple<string, DateTime> valuePair;
                 if (dataStore.TryGetValue(key, out valuePair))
                 {
-                    if(valuePair.Item2 < valuePair.Item2)
+                    if(valuePair.Item2 > DateTime.Now)
                     {
                         socket.Send(Encoding.UTF8.GetBytes($"+{valuePair.Item1}\r\n"));
                     }
