@@ -22,12 +22,103 @@ static void HandleClient(Socket socket)
         var numByte = socket.Receive(bytes);
 
         var data = Encoding.ASCII.GetString(bytes,
-                                   0, numByte);
+                                   0, numByte)
+            .Split("\r\n")
+            .Select(x => x.Trim())
+            .Where(item => !string.IsNullOrEmpty(item))
+            .ToList();
 
-        var buffer = Encoding.UTF8.GetBytes("+PONG\r\n");
-        socket.Send(buffer);
+        var parsedRequest = ParseRequest(data);
+
+        HandleCommand(socket, parsedRequest.CommandName, parsedRequest.Args);
+
     }
-    
+
+}
+
+static void HandleCommand(Socket socket, string command, List<object> args)
+{
+    switch (command)
+    {
+        case "PING":
+            socket.Send(Encoding.UTF8.GetBytes("+PONG\r\n"));
+            break;
+        case "ECHO":
+            {
+                var response = string.Join(" ",args);
+
+                socket.Send(Encoding.UTF8.GetBytes($"+{response}\r\n"));
+            }
+
+            break;
+
+        case "INFO":
+            socket.Send(Encoding.UTF8.GetBytes("+INFO\r\n"));
+            break;
+        default:
+            socket.Send(Encoding.UTF8.GetBytes($"-ERR invalid command \r\n"));
+            break;
+    }
+}
+
+
+static (string CommandName, List<object> Args) ParseRequest(List<string> arrResp)
+{
+    var parsedResp = ParseResp(arrResp);
+    var command = ((List<object>)parsedResp.Content)[0].ToString();
+    ((List<object>)(parsedResp.Content)).RemoveAt(0);
+
+    switch (command.ToUpper())
+    {
+        default:
+            return (command.ToUpper(), (List<object>)parsedResp.Content);
+    }
+
+}
+
+static (object Content, List<string> ArrResp) ParseResp(List<string> arrResp)
+{
+    while (arrResp.Count > 0)
+    {
+        var element = arrResp[0];
+        arrResp.RemoveAt(0);
+
+        switch (element[0])
+        {
+            case '*':
+                // array
+                var arrLen = int.Parse(element[1..]);
+                var arr = new List<object>();
+                for (int j = 0; j < arrLen; j++)
+                {
+                    var parsedContent = ParseResp(arrResp);
+                    arr.Add(parsedContent.Content);
+                    arrResp = parsedContent.ArrResp;
+                }
+
+                return (arr, arrResp);
+            case '+':
+                // string
+                var st = element[1..];
+                return (st, arrResp);
+            case '$':
+                // bulk string
+                var strlen = int.Parse(element[1..]);
+                var str = arrResp[0];
+                arrResp.RemoveAt(0);
+                return (str, arrResp);
+            case ':':
+                // integer
+                var integer = int.Parse(element[1..]);
+                return (integer, arrResp);
+            default:
+                break;
+        }
+    }
+
+
+
+    return (null, arrResp);
 }
 
 
