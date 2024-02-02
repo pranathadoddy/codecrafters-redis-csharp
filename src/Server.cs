@@ -4,6 +4,8 @@ using System.Text;
 
 Console.WriteLine("Logs from your program will appear here!");
 
+Dictionary<string, string> dataStore = new Dictionary<string, string>();
+
 TcpListener server = new TcpListener(IPAddress.Any, 6379);
 server.Start();
 
@@ -14,7 +16,7 @@ while (true)
     thread.Start();
 }
 
-static void HandleClient(Socket socket)
+void HandleClient(Socket socket)
 {
     while (true)
     {
@@ -36,7 +38,7 @@ static void HandleClient(Socket socket)
 
 }
 
-static void HandleCommand(Socket socket, string command, List<object> args)
+void HandleCommand(Socket socket, string command, List<object> args)
 {
     switch (command)
     {
@@ -50,6 +52,40 @@ static void HandleCommand(Socket socket, string command, List<object> args)
                 socket.Send(Encoding.UTF8.GetBytes($"+{response}\r\n"));
             }
 
+            break;
+
+        case "SET":
+            if(args.Count >= 2)
+            {
+                var key = args[0].ToString() ?? "";
+                var value = args[1].ToString() ?? "";
+                var response = dataStore.TryAdd(key, value) ? "+OK" : "$-1";
+                socket.Send(Encoding.UTF8.GetBytes($"{response}\r\n"));
+            }
+            else
+            {
+                socket.Send(Encoding.UTF8.GetBytes($"$-1\r\n"));
+            }
+            break;
+
+        case "GET":
+            if(args.Count == 1)
+            {
+                var key = args[0].ToString() ?? "";
+                string value;
+                if (dataStore.TryGetValue(key, out value))
+                {
+                    socket.Send(Encoding.UTF8.GetBytes($"+{value}\r\n"));
+                }
+                else
+                {
+                    socket.Send(Encoding.UTF8.GetBytes($"$-1\r\n"));
+                }
+            }
+            else
+            {
+                socket.Send(Encoding.UTF8.GetBytes($"$-1\r\n"));
+            }
             break;
 
         case "INFO":
