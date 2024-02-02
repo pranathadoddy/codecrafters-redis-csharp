@@ -40,6 +40,7 @@ void HandleClient(Socket socket)
 
 void HandleCommand(Socket socket, string command, List<object> args)
 {
+    string response;
     switch (command)
     {
         case "PING":
@@ -47,7 +48,7 @@ void HandleCommand(Socket socket, string command, List<object> args)
             break;
         case "ECHO":
             {
-                var response = string.Join(" ",args);
+                response = string.Join(" ",args);
 
                 socket.Send(Encoding.UTF8.GetBytes($"+{response}\r\n"));
             }
@@ -55,20 +56,22 @@ void HandleCommand(Socket socket, string command, List<object> args)
             break;
 
         case "SET":
-            if(args.Count >= 4)
+            if(args.Count >= 4 && args[2].ToString()?.ToUpper() == "PX")
+            {
+                var key = args[0].ToString() ?? "";
+                var value = args[1].ToString() ?? "";
+                
+                response = dataStore.TryAdd(key, new Tuple<string, DateTime>(value, DateTime.Now.AddMilliseconds((double)args[3]))) ? "+OK" : "$-1";
+            }
+            else
             {
                 var key = args[0].ToString() ?? "";
                 var value = args[1].ToString() ?? "";
 
-                var expiryTime = args[2].ToString() == "PX" ? DateTime.Now.AddMilliseconds((double)args[3]) : DateTime.MaxValue;
-
-                var response = dataStore.TryAdd(key, new Tuple<string, DateTime>(value, expiryTime)) ? "+OK" : "$-1";
-                socket.Send(Encoding.UTF8.GetBytes($"{response}\r\n"));
+                response = dataStore.TryAdd(key, new Tuple<string, DateTime>(value, DateTime.MaxValue)) ? "+OK" : "$-1";
+                
             }
-            else
-            {
-                socket.Send(Encoding.UTF8.GetBytes($"$-1\r\n"));
-            }
+            socket.Send(Encoding.UTF8.GetBytes($"{response}\r\n"));
             break;
 
         case "GET":
